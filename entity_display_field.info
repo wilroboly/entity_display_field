@@ -1,0 +1,3 @@
+name = Entity Display Field
+core = 7.x
+description = "Creates a field for rendering the entity using the chosen view mode"
