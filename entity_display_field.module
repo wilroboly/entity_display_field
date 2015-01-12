@@ -112,6 +112,8 @@ function entity_display_field_get_options($entity_type) {
     // @todo: exclude view modes which contain the Display Field field?
     $view_options[$machine_name] = check_plain($mode['label']);
   }
+  
+  drupal_alter('entity_display_field_view_modes', $view_options, $view_modes, $entity_type);
 
   return $view_options;
 }
