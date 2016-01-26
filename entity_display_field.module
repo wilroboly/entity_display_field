@@ -166,3 +166,13 @@ function entity_display_field_entity_view_mode_alter(&$view_mode, $context) {
   }
 
 }
+
+/**
+ * Implements hook_views_api().
+ */
+function entity_display_field_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'entity_display_field') . '/views',
+  );
+}
