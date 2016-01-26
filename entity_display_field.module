@@ -168,6 +168,109 @@ function entity_display_field_entity_view_mode_alter(&$view_mode, $context) {
 }
 
 /**
+ * Alter the form elements for a formatter's settings.
+ *
+ * @param $settings_form
+ *   The settings form array from the field module's implementation of
+ *   hook_field_formatter_settings().
+ * @param $context
+ *   An array of additional context for the settings form, containing:
+ *   - module: The module providing the formatter being configured.
+ *   - formatter: The definition array of the formatter being configured. Note
+ *     that this does not contain the machine name of the formatter. This can
+ *     be found in:
+ *     @code
+ *     $context['instance']['display'][$context['view_mode']]['type']
+ *     @endcode
+ *   - field: The field structure being configured.
+ *   - instance: The instance structure being configured.
+ *   - view_mode: The view mode being configured.
+ *   - form: The (entire) configuration form array, which will usually have no
+ *     use here.
+ *   - form_state: The form state of the (entire) configuration form.
+ *
+ * @see hook_field_formatter_settings()
+ */
+function entity_display_field_field_formatter_settings_form_alter(array &$settings_form, array $context) {
+  // This checks to ensure we are working with VIEWS and not with field entities.
+  if (($context['field']['type'] == 'entityreference') AND ($context['instance']['bundle']) == 'ctools') {
+    $field_display_type = $context['instance']['display'][$context['view_mode']]['type'];
+    $view = $context['form_state']['view'];
+    
+    // Collect all the entity display fields we have in on our site
+    $display_fields = field_read_fields(array('type' => 'entity_display_field'));
+  
+    if (!empty($display_fields)) {
+      foreach ($display_fields as $field_name => $field) {
+        $display_fields_array[$field_name] = $field_name;
+      }
+      foreach ($view->display_handler->get_handlers('field') as $field => $handler) {
+        $display_handlers_array[$field] = $handler->ui_name();
+      }
+      // Let's find the intersection between what we have and what we're using in our VIEW.
+      $common_keys = array_intersect_key($display_handlers_array, $display_fields_array);
+      if (isset($common_keys) AND is_array($common_keys) AND isset($settings_form['view_mode'])) {
+        foreach ($common_keys as $key => $value) {
+          $settings_form['view_mode']['#options'][$key] = $value;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_formatter_info_alter() 
+ */
+function entity_display_field_field_formatter_info_alter(&$info) {
+  // Here, we hijack the entityreference_entity_view rendering formatter and
+  // do our mojo on it.
+  $info['entityreference_entity_view']['module'] = 'entity_display_field';
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function entity_display_field_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  return entityreference_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state);
+}  
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function entity_display_field_field_formatter_settings_summary($field, $instance, $view_mode) {
+  return entityreference_field_formatter_settings_summary($field, $instance, $view_mode);
+}
+
+/**
+ * Implements hook_field_formatter_prepare_view().
+ */
+function entity_display_field_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
+  // Run this to collect our values and setup variables for the formatter alter.
+  entityreference_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, $items, $displays);
+}
+/**
+ * Implements hook_field_formatter_view() for entityreference entity rendering. This ensures that
+ * referenced entity is rendered according to the value passed by the Display View Mode modifier.
+ */
+function entity_display_field_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  // Get our 'entity_display_field' names;
+  $display_fields = field_read_fields(array('type' => 'entity_display_field'));
+
+  // If display fields are present, swap the view mode.
+  if (!empty($display_fields)) {
+    foreach (array_keys($display_fields) as $field_name) {
+      if (!empty($entity->{$field_name}) AND ($display['settings']['view_mode'] == $field_name)) {
+        $display_values = field_get_items($entity_type, $entity, $display['settings']['view_mode'], $langcode);
+        $view_mode = $display_values[0]['entity_display'];
+        continue;
+      }
+    }
+    $display['settings']['view_mode'] = $view_mode;
+  }
+  return entityreference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display);
+}
+
+/**
  * Implements hook_views_api().
  */
 function entity_display_field_views_api() {
