@@ -11,7 +11,6 @@ function entity_display_field_views_data_alter(&$data) {
   // If a display field is present in our view, let's find out 
   // what it is called and get its properties.
   if (!empty($display_fields)) {
-    //dd($display_fields, 'DISPLAY FIELDS');
     foreach ($display_fields as $field_name => $field) {
       $table = _field_sql_storage_tablename($field);
       if (isset($data[$table][$field['field_name']])) {
